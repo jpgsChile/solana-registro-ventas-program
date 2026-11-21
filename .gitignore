@@ -1,0 +1,22 @@
+# Build / deps
+target/
+node_modules/
+.yarn/
+dist/
+test-ledger/
+.anchor/
+
+# Lockfiles de herramientas locales
+.DS_Store
+*.log
+
+# Keypairs y secretos (nunca versionar)
+*-keypair.json
+**/deploy/*.json
+.env
+.env.*
+!.env.example
+
+# Backups locales
+.aula/
+*.tsbuildinfo

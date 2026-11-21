@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-declare_id!("");
+declare_id!("C2dJeFBUGCgjgWdzh28tJZ6dPTmXAiVfod3DBhPy7EUA");
 
 #[program]
 pub mod registro {
@@ -148,12 +148,12 @@ pub struct Registro {
     pub owner: Pubkey, // pub: has_one = owner necesita leer este campo desde el contexto
 
     #[max_len(30)]
-    nombre_negocio: String,
+    pub nombre_negocio: String,
 
     #[max_len(10)] // Guarda PDAs (32 bytes c/u), no structs completos
-    clientes: Vec<Pubkey>,
+    pub clientes: Vec<Pubkey>,
 
-    id_counter: u16,
+    pub id_counter: u16,
 }
 
 /////////////////////////// Cliente ///////////////////////////
@@ -161,15 +161,15 @@ pub struct Registro {
 #[account]
 #[derive(InitSpace, PartialEq)]
 pub struct Cliente {
-    id_cliente: u16,
+    pub id_cliente: u16,
 
     #[max_len(30)]
-    nombre: String,
+    pub nombre: String,
 
-    compras: u16,
+    pub compras: u16,
 
     #[max_len(10)]
-    historial: Vec<Pubkey>,
+    pub historial: Vec<Pubkey>,
 }
 
 /////////////////////////// Venta ///////////////////////////
@@ -178,12 +178,12 @@ pub struct Cliente {
 #[derive(InitSpace, PartialEq)]
 pub struct Venta {
     #[max_len(5)]
-    sku: String,
+    pub sku: String,
 
     #[max_len(50)]
-    descripcion: String,
+    pub descripcion: String,
 
-    monto: u32,
+    pub monto: u32,
 }
 
 /////////////////////////// CONTEXTOS ///////////////////////////

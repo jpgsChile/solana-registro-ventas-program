@@ -1,62 +1,79 @@
-# Registro de Ventas en Solana con PDAs
+# Registro de Ventas en Solana con PDAs (Anchor local)
 
-![banner](./images/banner.jpg)
+Programa Anchor reproducible desde Ubuntu, basado en el material educativo de
+[WayLearnLatam/Registro-Ventas-Solana-PDA](https://github.com/WayLearnLatam/Registro-Ventas-Solana-PDA).
 
-CRUD básico de un Solana Program desarrollado con Rust y Anchor desde el Solana Playground. 
+Este fork adapta el ejemplo de Solana Playground a un workspace Anchor CLI
+compatible con el frontend en [`bootcamp-solana`](https://github.com/jpgsChile/bootcamp-solana).
 
-Puedes comenzar dándole Fork a este repositorio (abajo te explicamos como 👇), **hemos preparado un entorno de codespaces listo para que no tengas que instalar nada**, solo déjate llevar por la fluidez de los ejercicios y temas desarrollados especialmente para ti. 
+## Versiones fijadas
 
-Asegúrate de clonar este repositorio a tu cuenta usando el botón **`Fork`**.
+| Herramienta | Versión verificada |
+| --- | --- |
+| Rust | 1.98.1 |
+| Solana CLI (Agave) | 4.4.1 |
+| Anchor (AVM) | 0.31.1 |
+| Node.js | 22.x |
 
-![fork](./images/fork.png)
-
-## Importando el proyecto 
-
-Ya con el repositorio en tu cuenta lo siguiente que debes hacer copiar el `enlace de tu repositorio`, lo que se puede hacer directamente desdel navegador:
-
-![repo](./images/repo.png)
-
-Posteriormente, lo uniremos con el siguiente enlace en nuestro navegador de preferencia:
-
-```url
-https://beta.solpg.io/
+```bash
+export PATH="$HOME/.avm/bin:$HOME/.local/share/solana/install/active_release/bin:$HOME/.cargo/bin:$PATH"
+avm use 0.31.1
 ```
 
-Lo que nos dará algo parecido a:
+## Program ID
 
-![url](./images/url.png)
+```
+C2dJeFBUGCgjgWdzh28tJZ6dPTmXAiVfod3DBhPy7EUA
+```
 
-Puedes importar directamenet el proyecto al `Solana Playground` dando clic al siguiente enlace 👇:
+Keypairs (fuera de Git):
 
-[ 🔗 Importar repositorio al Playground ](https://beta.solpg.io/https://github.com/WayLearnLatam/Registro-Ventas-Solana-PDA)
+- Programa: `/home/pablo/Pablo/Solana/.keys/solana-registro-ventas-program/programa-keypair.json`
+- Pagador / upgrade authority (Devnet): `.../deployer-devnet-keypair.json`
 
-Al pulsar enter seremos enviados al `Solana Playground` con nuestro proyecto abierto:
+Copia el keypair del programa a `target/deploy/registro-keypair.json` antes de
+compilar o desplegar si el directorio no existe.
 
-![pg](./images/pg.png)
+## Compilar y probar en local
 
-Para guardarlo solo damos clic en el boton `import` y asignamos un nombre:
+```bash
+cd /home/pablo/Pablo/Solana/solana-registro-ventas-program
+npm ci
+mkdir -p target/deploy
+cp /home/pablo/Pablo/Solana/.keys/solana-registro-ventas-program/programa-keypair.json \
+  target/deploy/registro-keypair.json
+anchor build
+anchor test
+```
 
-![import](./images/import.png)
+Artefactos del mismo build:
 
-## Preparacion del entorno
+- `.so`: `target/deploy/registro.so`
+- IDL: `target/idl/registro.json` (copia estable en `idl/registro.json`)
 
-Primero conectaremos el entorno con la devnet, lo que tambien procederá a la creación de una wallet. Para eso daremos clic en donde dice **Not Conected**:
+## Semillas PDA (compatibles con el frontend)
 
-![playground1](./images/playground1.png)
+- `registro` ← `["registro", nombre_negocio, owner]`
+- `cliente` ← `["cliente", registro, id_cliente u16 LE]`
+- `venta` ← `["venta", cliente, sku]`
 
-Saldrá la siguiente ventana donde daremos en el botón **Continue**:
+## Aportes propios (resumen)
 
-![wallet](./images/wallet.png)
+1. Workspace Anchor CLI reproducible (sin Playground).
+2. Validaciones on-chain de longitudes UTF-8, capacidad, montos y aritmética.
+3. Eventos Anchor en registrar venta, corregir importe y devolver venta.
 
-Como resultado se mostrará la siguiente información:
+## Observar eventos
 
-![status](./images/status.png)
+Tras una transacción confirmada en Devnet:
 
-* En verde: el estado de la conexión y el entorno al que se encuentra conectado
+```bash
+solana confirm -v <FIRMA> --url https://api.devnet.solana.com
+```
 
-* En amarillo: la la dirección de la wallet conectada
+Los eventos aparecen en los logs del programa (`Program data:`).
 
-* En azul: la cantidad de tokens en la wallet
+## Atribución
 
-> ℹ️ ¿Quieres ver el ejemplo de un "Hola Mundo" en Solana?. Da clic aquí: 👉 [Ver Ejemplo](https://github.com/WayLearnLatam/Solana-starter-kit/tree/1fc6349ba63375a3fe223d8d56911bc64765459b/build-deploy)
-
+Material original: WayLearn · Solana Engineering Track.
+Conservamos la estructura de instrucciones, cuentas y semillas del ejemplo didáctico.

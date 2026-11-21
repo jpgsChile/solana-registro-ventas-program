@@ -1,0 +1,25 @@
+[toolchain]
+anchor_version = "0.31.1"
+
+[features]
+resolution = true
+skip-lint = false
+
+[programs.localnet]
+registro = "C2dJeFBUGCgjgWdzh28tJZ6dPTmXAiVfod3DBhPy7EUA"
+
+[programs.devnet]
+registro = "C2dJeFBUGCgjgWdzh28tJZ6dPTmXAiVfod3DBhPy7EUA"
+
+[registry]
+url = "https://api.apr.dev"
+
+[provider]
+cluster = "Localnet"
+wallet = "/home/pablo/Pablo/Solana/.keys/solana-registro-ventas-program/deployer-devnet-keypair.json"
+
+[scripts]
+test = "npx ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
+
+[test]
+startup_wait = 20000
