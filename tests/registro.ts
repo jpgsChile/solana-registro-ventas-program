@@ -157,6 +157,51 @@ describe("registro", () => {
     }
   });
 
+  it("rechaza un monto inválido sin mutar el estado", async () => {
+    const montoAntes = (await program.account.venta.fetch(ventaPda)).monto;
+    try {
+      await program.methods
+        .cambiarMonto(1, sku, 0)
+        .accounts({
+          owner: owner.publicKey,
+          registro: registroPda,
+          cliente: clientePda,
+          venta: ventaPda,
+        })
+        .rpc();
+      expect.fail("debía rechazar monto 0");
+    } catch (error) {
+      expect(error).to.be.instanceOf(AnchorError);
+      expect((error as AnchorError).error.errorCode.code).to.equal("MontoInvalido");
+    }
+    expect((await program.account.venta.fetch(ventaPda)).monto).to.equal(montoAntes);
+  });
+
+  it("rechaza un SKU con más de 5 bytes UTF-8", async () => {
+    const skuLargo = "CAFÉ01"; // 7 bytes UTF-8
+    const [ventaLarga] = PublicKey.findProgramAddressSync(
+      [Buffer.from("venta"), clientePda.toBuffer(), Buffer.from(skuLargo)],
+      program.programId,
+    );
+    try {
+      await program.methods
+        .registrarVenta(1, skuLargo, "no debe crearse", 10)
+        .accounts({
+          owner: owner.publicKey,
+          registro: registroPda,
+          cliente: clientePda,
+          venta: ventaLarga,
+          systemProgram: SystemProgram.programId,
+        })
+        .rpc();
+      expect.fail("debía rechazar el SKU largo");
+    } catch (error) {
+      expect(error).to.be.instanceOf(AnchorError);
+      expect((error as AnchorError).error.errorCode.code).to.equal("SkuInvalido");
+    }
+    expect(await provider.connection.getAccountInfo(ventaLarga)).to.equal(null);
+  });
+
   it("devuelve la venta, retira la referencia y cierra la cuenta", async () => {
     await program.methods
       .hacerDevolucion(1, sku)

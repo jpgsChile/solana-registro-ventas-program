@@ -9,47 +9,51 @@ pub mod registro {
     /////////////////////////// INSTRUCCIONES ///////////////////////////
     /////////////////////////// Crear Registro ///////////////////////////
     pub fn crear_registro(context: Context<NuevoRegistro>, nombre_negocio: String) -> Result<()> {
+        validar_texto(&nombre_negocio, MAX_NEGOCIO, Errores::NombreNegocioInvalido)?;
+
         context.accounts.registro.set_inner(Registro {
-            owner: context.accounts.owner.key(),    // caller wallet
-            nombre_negocio: nombre_negocio.clone(), // .clone() porque el String se reusa en el msg!
-            clientes: Vec::new(), // El negocio nace sin clientes. Guardara PDAs, no structs
-            id_counter: 0,        // Contador incremental, asigna un id unico a cada cliente
-        }); // Crea el struct del registro, lo serializa y lo guarda en el espacio de la cuenta
+            owner: context.accounts.owner.key(),
+            nombre_negocio: nombre_negocio.clone(),
+            clientes: Vec::new(),
+            id_counter: 0,
+        });
 
-        msg!("Registro: {} creado exitosamente!", nombre_negocio); // Log de verificacion
-
+        msg!("Registro: {} creado exitosamente!", nombre_negocio);
         Ok(())
     }
 
     /////////////////////////// Nuevo Cliente ///////////////////////////
-    // "init" no puede ser condicional: Anchor crea las cuentas antes de entrar al handler.
-    // Por eso el alta del cliente es su propia instruccion, separada de registrar_venta.
     pub fn crear_cliente(context: Context<NuevoCliente>, nombre: String) -> Result<()> {
-        let cliente_key = context.accounts.cliente.key(); // Se lee ANTES del &mut para no solapar prestamos
+        validar_texto(&nombre, MAX_NOMBRE, Errores::NombreClienteInvalido)?;
 
+        let cliente_key = context.accounts.cliente.key();
         let registro = &mut context.accounts.registro;
 
-        // El id no es un argumento: lo asigna el programa. El contexto ya derivo la cuenta a
-        // partir de este mismo valor, asi que aqui solo se confirma en el estado.
-        let id_cliente = registro.id_counter + 1;
+        require!(
+            registro.clientes.len() < MAX_CLIENTES,
+            Errores::CapacidadClientes
+        );
+
+        // Debe coincidir con la semilla (registro.id_counter + 1).to_le_bytes() del contexto.
+        let id_cliente = registro
+            .id_counter
+            .checked_add(1)
+            .ok_or(Errores::DesbordamientoContador)?;
         registro.id_counter = id_cliente;
-        registro.clientes.push(cliente_key); // El registro guarda la PDA del cliente, no sus datos
+        registro.clientes.push(cliente_key);
 
         context.accounts.cliente.set_inner(Cliente {
             id_cliente,
-            nombre: nombre.clone(), // .clone() para no ceder la propiedad porque el String se reusa en el msg!
-            compras: 0,             // Nace sin compras: registrar_venta es quien incrementa
+            nombre: nombre.clone(),
+            compras: 0,
             historial: Vec::new(),
         });
 
-        msg!("Cliente {} creado con id: {}", nombre, id_cliente); // Log de verificacion
-
+        msg!("Cliente {} creado con id: {}", nombre, id_cliente);
         Ok(())
     }
 
     /////////////////////////// Registrar Venta ///////////////////////////
-    // id_cliente y sku no se usan en el cuerpo: viajan al contexto para derivar y validar
-    // las cuentas. Ver NuevaVenta.
     pub fn registrar_venta(
         context: Context<NuevaVenta>,
         _id_cliente: u16,
@@ -57,64 +61,70 @@ pub mod registro {
         descripcion: String,
         monto: u32,
     ) -> Result<()> {
+        validar_texto(&sku, MAX_SKU, Errores::SkuInvalido)?;
+        validar_texto(&descripcion, MAX_DESCRIPCION, Errores::DescripcionInvalida)?;
+        require!(monto > 0, Errores::MontoInvalido);
+
+        let cliente = &mut context.accounts.cliente;
+        require!(
+            cliente.historial.len() < MAX_VENTAS,
+            Errores::CapacidadVentas
+        );
+
         context.accounts.venta.set_inner(Venta {
             sku,
             descripcion,
             monto,
-        }); // Serializa y guarda el struct en la cuenta de la venta
+        });
 
-        let venta_key = context.accounts.venta.key(); // Se lee ANTES del &mut de cliente
-
-        let cliente = &mut context.accounts.cliente;
-
-        cliente.historial.push(venta_key); // El historial guarda PDAs, no structs completos
-        cliente.compras += 1;
+        let venta_key = context.accounts.venta.key();
+        cliente.historial.push(venta_key);
+        cliente.compras = cliente
+            .compras
+            .checked_add(1)
+            .ok_or(Errores::DesbordamientoContador)?;
 
         msg!(
             "Venta registrada para el cliente con id: {}",
             cliente.id_cliente
-        ); // Log de verificacion
-
+        );
         Ok(())
     }
 
     /////////////////////////// Hacer Devolucion ///////////////////////////
-    // El contexto EliminarVenta lleva "close = owner": la cuenta de la venta se cierra al final
-    // y su rent vuelve al owner.
     pub fn hacer_devolucion(
         context: Context<EliminarVenta>,
         _id_cliente: u16,
         sku: String,
     ) -> Result<()> {
-        let venta_key = context.accounts.venta.key(); // Se lee ANTES del &mut de cliente
-
+        let venta_key = context.accounts.venta.key();
         let cliente = &mut context.accounts.cliente;
 
         require!(cliente.historial.contains(&venta_key), Errores::NoSKU);
-        // La venta existe y pertenece a este cliente (lo garantizan las seeds), pero el historial
-        // es el indice de lectura: si la referencia no esta, restar compras lo desincronizaria.
 
-        cliente.historial.retain(|&k| k != venta_key); // Quita la referencia del historial
-        cliente.compras -= 1;
+        cliente.historial.retain(|&k| k != venta_key);
+        cliente.compras = cliente
+            .compras
+            .checked_sub(1)
+            .ok_or(Errores::DesbordamientoContador)?;
 
         msg!(
             "Venta con sku: {}, devuelta por el cliente con id: {}",
             sku,
             cliente.id_cliente
         );
-
         Ok(())
     }
 
     /////////////////////////// Cambiar Monto ///////////////////////////
-    // La cuenta de la venta llega ya validada por el contexto: no hay que recorrer ningun vector
-    // ni reconstruir la cadena a mano.
     pub fn cambiar_monto(
         context: Context<ModificarVenta>,
         _id_cliente: u16,
         sku: String,
         nuevo_monto: u32,
     ) -> Result<()> {
+        require!(nuevo_monto > 0, Errores::MontoInvalido);
+
         let venta = &mut context.accounts.venta;
         let viejo_monto = venta.monto;
         venta.monto = nuevo_monto;
@@ -125,9 +135,21 @@ pub mod registro {
             viejo_monto,
             nuevo_monto
         );
-
         Ok(())
     }
+}
+
+pub const MAX_NEGOCIO: usize = 30;
+pub const MAX_NOMBRE: usize = 30;
+pub const MAX_SKU: usize = 5;
+pub const MAX_DESCRIPCION: usize = 50;
+pub const MAX_CLIENTES: usize = 10;
+pub const MAX_VENTAS: usize = 10;
+
+fn validar_texto(valor: &str, max_bytes: usize, error: Errores) -> Result<()> {
+    require!(!valor.is_empty(), error);
+    require!(valor.as_bytes().len() <= max_bytes, error);
+    Ok(())
 }
 
 /////////////////////////// Codigos de Error ///////////////////////////
@@ -137,6 +159,22 @@ pub enum Errores {
     NoOwner,
     #[msg("Error, la venta no esta en el historial del cliente")]
     NoSKU,
+    #[msg("Nombre de negocio vacio o mayor a 30 bytes UTF-8")]
+    NombreNegocioInvalido,
+    #[msg("Nombre de cliente vacio o mayor a 30 bytes UTF-8")]
+    NombreClienteInvalido,
+    #[msg("SKU vacio o mayor a 5 bytes UTF-8")]
+    SkuInvalido,
+    #[msg("Descripcion vacia o mayor a 50 bytes UTF-8")]
+    DescripcionInvalida,
+    #[msg("El monto debe ser un entero positivo")]
+    MontoInvalido,
+    #[msg("El registro alcanzo el maximo de 10 clientes")]
+    CapacidadClientes,
+    #[msg("El cliente alcanzo el maximo de 10 ventas activas")]
+    CapacidadVentas,
+    #[msg("Desbordamiento del contador u16")]
+    DesbordamientoContador,
 }
 
 /////////////////////////// CUENTAS ///////////////////////////
