@@ -9,7 +9,10 @@ pub mod registro {
     /////////////////////////// INSTRUCCIONES ///////////////////////////
     /////////////////////////// Crear Registro ///////////////////////////
     pub fn crear_registro(context: Context<NuevoRegistro>, nombre_negocio: String) -> Result<()> {
-        validar_texto(&nombre_negocio, MAX_NEGOCIO, Errores::NombreNegocioInvalido)?;
+        require!(
+            texto_valido(&nombre_negocio, MAX_NEGOCIO),
+            Errores::NombreNegocioInvalido
+        );
 
         context.accounts.registro.set_inner(Registro {
             owner: context.accounts.owner.key(),
@@ -24,7 +27,7 @@ pub mod registro {
 
     /////////////////////////// Nuevo Cliente ///////////////////////////
     pub fn crear_cliente(context: Context<NuevoCliente>, nombre: String) -> Result<()> {
-        validar_texto(&nombre, MAX_NOMBRE, Errores::NombreClienteInvalido)?;
+        require!(texto_valido(&nombre, MAX_NOMBRE), Errores::NombreClienteInvalido);
 
         let cliente_key = context.accounts.cliente.key();
         let registro = &mut context.accounts.registro;
@@ -61,8 +64,11 @@ pub mod registro {
         descripcion: String,
         monto: u32,
     ) -> Result<()> {
-        validar_texto(&sku, MAX_SKU, Errores::SkuInvalido)?;
-        validar_texto(&descripcion, MAX_DESCRIPCION, Errores::DescripcionInvalida)?;
+        require!(texto_valido(&sku, MAX_SKU), Errores::SkuInvalido);
+        require!(
+            texto_valido(&descripcion, MAX_DESCRIPCION),
+            Errores::DescripcionInvalida
+        );
         require!(monto > 0, Errores::MontoInvalido);
 
         let cliente = &mut context.accounts.cliente;
@@ -146,10 +152,8 @@ pub const MAX_DESCRIPCION: usize = 50;
 pub const MAX_CLIENTES: usize = 10;
 pub const MAX_VENTAS: usize = 10;
 
-fn validar_texto(valor: &str, max_bytes: usize, error: Errores) -> Result<()> {
-    require!(!valor.is_empty(), error);
-    require!(valor.as_bytes().len() <= max_bytes, error);
-    Ok(())
+fn texto_valido(valor: &str, max_bytes: usize) -> bool {
+    !valor.is_empty() && valor.as_bytes().len() <= max_bytes
 }
 
 /////////////////////////// Codigos de Error ///////////////////////////

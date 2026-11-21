@@ -443,6 +443,46 @@
       "code": 6001,
       "name": "NoSKU",
       "msg": "Error, la venta no esta en el historial del cliente"
+    },
+    {
+      "code": 6002,
+      "name": "NombreNegocioInvalido",
+      "msg": "Nombre de negocio vacio o mayor a 30 bytes UTF-8"
+    },
+    {
+      "code": 6003,
+      "name": "NombreClienteInvalido",
+      "msg": "Nombre de cliente vacio o mayor a 30 bytes UTF-8"
+    },
+    {
+      "code": 6004,
+      "name": "SkuInvalido",
+      "msg": "SKU vacio o mayor a 5 bytes UTF-8"
+    },
+    {
+      "code": 6005,
+      "name": "DescripcionInvalida",
+      "msg": "Descripcion vacia o mayor a 50 bytes UTF-8"
+    },
+    {
+      "code": 6006,
+      "name": "MontoInvalido",
+      "msg": "El monto debe ser un entero positivo"
+    },
+    {
+      "code": 6007,
+      "name": "CapacidadClientes",
+      "msg": "El registro alcanzo el maximo de 10 clientes"
+    },
+    {
+      "code": 6008,
+      "name": "CapacidadVentas",
+      "msg": "El cliente alcanzo el maximo de 10 ventas activas"
+    },
+    {
+      "code": 6009,
+      "name": "DesbordamientoContador",
+      "msg": "Desbordamiento del contador u16"
     }
   ],
   "types": [
