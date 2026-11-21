@@ -433,6 +433,47 @@
       ]
     }
   ],
+  "events": [
+    {
+      "name": "MontoCorregido",
+      "discriminator": [
+        41,
+        152,
+        133,
+        141,
+        41,
+        210,
+        48,
+        186
+      ]
+    },
+    {
+      "name": "VentaDevuelta",
+      "discriminator": [
+        118,
+        254,
+        236,
+        252,
+        76,
+        111,
+        123,
+        101
+      ]
+    },
+    {
+      "name": "VentaRegistrada",
+      "discriminator": [
+        169,
+        239,
+        74,
+        57,
+        68,
+        71,
+        246,
+        231
+      ]
+    }
+  ],
   "errors": [
     {
       "code": 6000,
@@ -513,6 +554,42 @@
       }
     },
     {
+      "name": "MontoCorregido",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "registro",
+            "type": "pubkey"
+          },
+          {
+            "name": "cliente",
+            "type": "pubkey"
+          },
+          {
+            "name": "venta",
+            "type": "pubkey"
+          },
+          {
+            "name": "id_cliente",
+            "type": "u16"
+          },
+          {
+            "name": "sku",
+            "type": "string"
+          },
+          {
+            "name": "monto_anterior",
+            "type": "u32"
+          },
+          {
+            "name": "monto_nuevo",
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
       "name": "Registro",
       "type": {
         "kind": "struct",
@@ -549,6 +626,70 @@
           },
           {
             "name": "descripcion",
+            "type": "string"
+          },
+          {
+            "name": "monto",
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "VentaDevuelta",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "registro",
+            "type": "pubkey"
+          },
+          {
+            "name": "cliente",
+            "type": "pubkey"
+          },
+          {
+            "name": "venta",
+            "type": "pubkey"
+          },
+          {
+            "name": "id_cliente",
+            "type": "u16"
+          },
+          {
+            "name": "sku",
+            "type": "string"
+          },
+          {
+            "name": "monto",
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "VentaRegistrada",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "registro",
+            "type": "pubkey"
+          },
+          {
+            "name": "cliente",
+            "type": "pubkey"
+          },
+          {
+            "name": "venta",
+            "type": "pubkey"
+          },
+          {
+            "name": "id_cliente",
+            "type": "u16"
+          },
+          {
+            "name": "sku",
             "type": "string"
           },
           {

@@ -90,6 +90,15 @@ pub mod registro {
             .checked_add(1)
             .ok_or(Errores::DesbordamientoContador)?;
 
+        emit!(VentaRegistrada {
+            registro: context.accounts.registro.key(),
+            cliente: cliente.key(),
+            venta: venta_key,
+            id_cliente: cliente.id_cliente,
+            sku: context.accounts.venta.sku.clone(),
+            monto,
+        });
+
         msg!(
             "Venta registrada para el cliente con id: {}",
             cliente.id_cliente
@@ -104,6 +113,7 @@ pub mod registro {
         sku: String,
     ) -> Result<()> {
         let venta_key = context.accounts.venta.key();
+        let monto = context.accounts.venta.monto;
         let cliente = &mut context.accounts.cliente;
 
         require!(cliente.historial.contains(&venta_key), Errores::NoSKU);
@@ -113,6 +123,15 @@ pub mod registro {
             .compras
             .checked_sub(1)
             .ok_or(Errores::DesbordamientoContador)?;
+
+        emit!(VentaDevuelta {
+            registro: context.accounts.registro.key(),
+            cliente: cliente.key(),
+            venta: venta_key,
+            id_cliente: cliente.id_cliente,
+            sku: sku.clone(),
+            monto,
+        });
 
         msg!(
             "Venta con sku: {}, devuelta por el cliente con id: {}",
@@ -135,6 +154,16 @@ pub mod registro {
         let viejo_monto = venta.monto;
         venta.monto = nuevo_monto;
 
+        emit!(MontoCorregido {
+            registro: context.accounts.registro.key(),
+            cliente: context.accounts.cliente.key(),
+            venta: venta.key(),
+            id_cliente: context.accounts.cliente.id_cliente,
+            sku: sku.clone(),
+            monto_anterior: viejo_monto,
+            monto_nuevo: nuevo_monto,
+        });
+
         msg!(
             "El monto de la venta con sku: {}, paso de: {}, a: {}",
             sku,
@@ -154,6 +183,38 @@ pub const MAX_VENTAS: usize = 10;
 
 fn texto_valido(valor: &str, max_bytes: usize) -> bool {
     !valor.is_empty() && valor.as_bytes().len() <= max_bytes
+}
+
+/////////////////////////// Eventos ///////////////////////////
+#[event]
+pub struct VentaRegistrada {
+    pub registro: Pubkey,
+    pub cliente: Pubkey,
+    pub venta: Pubkey,
+    pub id_cliente: u16,
+    pub sku: String,
+    pub monto: u32,
+}
+
+#[event]
+pub struct MontoCorregido {
+    pub registro: Pubkey,
+    pub cliente: Pubkey,
+    pub venta: Pubkey,
+    pub id_cliente: u16,
+    pub sku: String,
+    pub monto_anterior: u32,
+    pub monto_nuevo: u32,
+}
+
+#[event]
+pub struct VentaDevuelta {
+    pub registro: Pubkey,
+    pub cliente: Pubkey,
+    pub venta: Pubkey,
+    pub id_cliente: u16,
+    pub sku: String,
+    pub monto: u32,
 }
 
 /////////////////////////// Codigos de Error ///////////////////////////
