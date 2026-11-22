@@ -8,6 +8,69 @@
   },
   "instructions": [
     {
+      "name": "actualizar_cliente",
+      "discriminator": [
+        203,
+        17,
+        140,
+        69,
+        200,
+        249,
+        196,
+        50
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "signer": true,
+          "relations": [
+            "registro"
+          ]
+        },
+        {
+          "name": "registro"
+        },
+        {
+          "name": "cliente",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  108,
+                  105,
+                  101,
+                  110,
+                  116,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "registro"
+              },
+              {
+                "kind": "arg",
+                "path": "id_cliente"
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "id_cliente",
+          "type": "u16"
+        },
+        {
+          "name": "nuevo_nombre",
+          "type": "string"
+        }
+      ]
+    },
+    {
       "name": "cambiar_monto",
       "discriminator": [
         138,
