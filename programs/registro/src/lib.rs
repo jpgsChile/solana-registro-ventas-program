@@ -172,6 +172,25 @@ pub mod registro {
         );
         Ok(())
     }
+
+    /////////////////////////// Actualizar Cliente ///////////////////////////
+    pub fn actualizar_cliente(
+        context: Context<ActualizarCliente>,
+        id_cliente: u16,
+        nuevo_nombre: String,
+    ) -> Result<()> {
+        require!(
+            texto_valido(&nuevo_nombre, MAX_NOMBRE),
+            Errores::NombreClienteInvalido
+        );
+
+        let cliente = &mut context.accounts.cliente;
+        cliente.nombre = nuevo_nombre;
+
+        // Sin nombres en el log: solo el id del cliente.
+        msg!("Cliente con id: {} actualizado", id_cliente);
+        Ok(())
+    }
 }
 
 pub const MAX_NEGOCIO: usize = 30;
@@ -434,4 +453,23 @@ pub struct EliminarVenta<'info> {
         bump
     )]
     pub venta: Account<'info, Venta>,
+}
+
+/////////////////////////// Actualizar Cliente ///////////////////////////
+/// Instruccion: actualizar_cliente
+
+#[derive(Accounts)]
+#[instruction(id_cliente: u16)]
+pub struct ActualizarCliente<'info> {
+    pub owner: Signer<'info>,
+
+    #[account(has_one = owner @ Errores::NoOwner)]
+    pub registro: Account<'info, Registro>,
+
+    #[account(
+        mut,
+        seeds = [b"cliente", registro.key().as_ref(), id_cliente.to_le_bytes().as_ref()],
+        bump
+    )]
+    pub cliente: Account<'info, Cliente>,
 }

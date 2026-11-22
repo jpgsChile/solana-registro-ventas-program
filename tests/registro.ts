@@ -202,6 +202,173 @@ describe("registro", () => {
     expect(await provider.connection.getAccountInfo(ventaLarga)).to.equal(null);
   });
 
+  it("actualiza el nombre de un cliente con ventas sin alterar id, PDA, compras ni historial", async () => {
+    const antes = await program.account.cliente.fetch(clientePda);
+    expect(antes.compras).to.be.greaterThan(0);
+    expect(antes.historial).to.have.length.greaterThan(0);
+    const historialAntes = antes.historial.map((h) => h.toBase58());
+
+    await program.methods
+      .actualizarCliente(1, "Ana Actualizada")
+      .accounts({
+        owner: owner.publicKey,
+        registro: registroPda,
+        cliente: clientePda,
+      })
+      .rpc();
+
+    const despues = await program.account.cliente.fetch(clientePda);
+    expect(despues.nombre).to.equal("Ana Actualizada");
+    expect(despues.idCliente).to.equal(antes.idCliente);
+    expect(despues.compras).to.equal(antes.compras);
+    expect(despues.historial.map((h) => h.toBase58())).to.deep.equal(historialAntes);
+  });
+
+  it("actualiza el nombre de un cliente sin ventas", async () => {
+    const idSinVentas = 2;
+    const [clienteSinVentas] = PublicKey.findProgramAddressSync(
+      [Buffer.from("cliente"), registroPda.toBuffer(), u16Le(idSinVentas)],
+      program.programId,
+    );
+
+    await program.methods
+      .crearCliente("Bruno")
+      .accounts({
+        owner: owner.publicKey,
+        registro: registroPda,
+        cliente: clienteSinVentas,
+        systemProgram: SystemProgram.programId,
+      })
+      .rpc();
+
+    const antes = await program.account.cliente.fetch(clienteSinVentas);
+    expect(antes.compras).to.equal(0);
+    expect(antes.historial).to.have.length(0);
+
+    await program.methods
+      .actualizarCliente(idSinVentas, "Bruno Renombrado")
+      .accounts({
+        owner: owner.publicKey,
+        registro: registroPda,
+        cliente: clienteSinVentas,
+      })
+      .rpc();
+
+    const despues = await program.account.cliente.fetch(clienteSinVentas);
+    expect(despues.nombre).to.equal("Bruno Renombrado");
+    expect(despues.idCliente).to.equal(idSinVentas);
+    expect(despues.compras).to.equal(0);
+    expect(despues.historial).to.have.length(0);
+  });
+
+  it("permite actualizar con el mismo nombre (sin cambio de datos)", async () => {
+    await program.methods
+      .actualizarCliente(1, "Ana Actualizada")
+      .accounts({
+        owner: owner.publicKey,
+        registro: registroPda,
+        cliente: clientePda,
+      })
+      .rpc();
+    const cliente = await program.account.cliente.fetch(clientePda);
+    expect(cliente.nombre).to.equal("Ana Actualizada");
+  });
+
+  it("rechaza un nombre de cliente invalido sin mutar el estado", async () => {
+    const nombreAntes = (await program.account.cliente.fetch(clientePda)).nombre;
+
+    try {
+      await program.methods
+        .actualizarCliente(1, "")
+        .accounts({
+          owner: owner.publicKey,
+          registro: registroPda,
+          cliente: clientePda,
+        })
+        .rpc();
+      expect.fail("debía rechazar nombre vacío");
+    } catch (error) {
+      expect(error).to.be.instanceOf(AnchorError);
+      expect((error as AnchorError).error.errorCode.code).to.equal("NombreClienteInvalido");
+    }
+
+    try {
+      await program.methods
+        .actualizarCliente(1, "ñ".repeat(16)) // 32 bytes UTF-8
+        .accounts({
+          owner: owner.publicKey,
+          registro: registroPda,
+          cliente: clientePda,
+        })
+        .rpc();
+      expect.fail("debía rechazar nombre demasiado largo");
+    } catch (error) {
+      expect(error).to.be.instanceOf(AnchorError);
+      expect((error as AnchorError).error.errorCode.code).to.equal("NombreClienteInvalido");
+    }
+
+    expect((await program.account.cliente.fetch(clientePda)).nombre).to.equal(nombreAntes);
+  });
+
+  it("rechaza actualizar cliente con autoridad incorrecta sin mutar el estado", async () => {
+    const intruso = Keypair.generate();
+    const nombreAntes = (await program.account.cliente.fetch(clientePda)).nombre;
+
+    try {
+      await program.methods
+        .actualizarCliente(1, "Intruso")
+        .accounts({
+          owner: intruso.publicKey,
+          registro: registroPda,
+          cliente: clientePda,
+        })
+        .signers([intruso])
+        .rpc();
+      expect.fail("debía rechazar la autoridad incorrecta");
+    } catch (error) {
+      expect(error).to.be.instanceOf(AnchorError);
+      expect((error as AnchorError).error.errorCode.code).to.equal("NoOwner");
+    }
+
+    expect((await program.account.cliente.fetch(clientePda)).nombre).to.equal(nombreAntes);
+  });
+
+  it("rechaza una PDA de cliente de otro registro", async () => {
+    const otroNegocio = "Otro Cafe D1";
+    const [otroRegistro] = PublicKey.findProgramAddressSync(
+      [Buffer.from("registro"), Buffer.from(otroNegocio), owner.publicKey.toBuffer()],
+      program.programId,
+    );
+
+    await program.methods
+      .crearRegistro(otroNegocio)
+      .accounts({
+        owner: owner.publicKey,
+        registro: otroRegistro,
+        systemProgram: SystemProgram.programId,
+      })
+      .rpc();
+
+    const nombreAntes = (await program.account.cliente.fetch(clientePda)).nombre;
+
+    try {
+      await program.methods
+        .actualizarCliente(1, "Cruzado")
+        .accounts({
+          owner: owner.publicKey,
+          registro: otroRegistro,
+          cliente: clientePda,
+        })
+        .rpc();
+      expect.fail("debía rechazar PDA de otro registro");
+    } catch (error) {
+      expect(error).to.be.instanceOf(AnchorError);
+      expect((error as AnchorError).error.errorCode.code).to.equal("ConstraintSeeds");
+    }
+
+    expect((await program.account.cliente.fetch(clientePda)).nombre).to.equal(nombreAntes);
+  });
+
   it("devuelve la venta, retira la referencia y cierra la cuenta", async () => {
     await program.methods
       .hacerDevolucion(1, sku)
